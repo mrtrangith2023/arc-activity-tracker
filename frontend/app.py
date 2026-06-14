@@ -8,11 +8,8 @@ st.set_page_config(
 st.title("Arc Activity Tracker")
 
 wallet = st.text_input(
-    "Enter Wallet Address"
+    "Wallet Address"
 )
 
 if wallet:
-    st.success(f"Tracking: {wallet}")
-
-    st.metric("Transactions", "0")
-    st.metric("Arc Score", "0")
+    st.success(wallet)
