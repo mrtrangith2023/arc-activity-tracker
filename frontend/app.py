@@ -1,9 +1,5 @@
 import streamlit as st
-
-st.set_page_config(
-    page_title="Arc Activity Tracker",
-    layout="wide"
-)
+import requests
 
 st.title("Arc Activity Tracker")
 
@@ -12,4 +8,9 @@ wallet = st.text_input(
 )
 
 if wallet:
-    st.success(wallet)
+
+    data = requests.get(
+        f"http://127.0.0.1:8000/wallet/{wallet}"
+    ).json()
+
+    st.json(data)

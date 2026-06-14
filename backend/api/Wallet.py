@@ -1,12 +1,12 @@
 from fastapi import APIRouter
 
-router = APIRouter()
+router = APIRouter(
+    prefix="/wallets",
+    tags=["wallets"]
+)
 
-@router.get("/{address}")
-def get_wallet(address: str):
-
+@router.get("/")
+def get_wallets():
     return {
-        "address": address,
-        "score": 0,
-        "transactions": 0
+        "wallets": []
     }
