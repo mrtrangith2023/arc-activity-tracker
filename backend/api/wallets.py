@@ -20,9 +20,19 @@ from backend.services.score import (
     calculate_score,
     get_badge
 )
+from backend.services.leaderboard import (
+    get_leaderboard
+)
 
 router = APIRouter()
 
+# ===================================
+# Leaderboard
+# ===================================   
+@router.get("/leaderboard")
+def leaderboard():
+
+    return get_leaderboard()
 
 # ====================================
 # RPC STATUS
@@ -35,7 +45,6 @@ def rpc_status():
         "connected": is_connected(),
         "latest_block": latest_block()
     }
-
 
 # ====================================
 # WALLET BALANCE
@@ -59,8 +68,7 @@ def wallet(address: str):
             status_code=400,
             detail=str(e)
         )
-
-
+    
 # ====================================
 # ADDRESS DETAILS
 # ====================================
@@ -143,7 +151,6 @@ def wallet_protocols(address: str):
             status_code=400,
             detail=str(e)
         )
-
 
 # ====================================
 # WALLET SUMMARY
