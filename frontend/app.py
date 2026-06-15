@@ -1,7 +1,29 @@
+# # import streamlit as st
+# # import requests
+
+# # st.title("Arc Activity Tracker")
+
+# # wallet = st.text_input(
+# #     "Wallet Address"
+# # )
+
+# # if wallet:
+
+# #     data = requests.get(
+# #         f"http://127.0.0.1:8000/wallet/{wallet}"
+# #     ).json()
+
+# #     st.json(data)
 # import streamlit as st
 # import requests
 
-# st.title("Arc Activity Tracker")
+# st.set_page_config(
+#     page_title="Arc Activity Tracker",
+#     page_icon="🚀",
+#     layout="wide"
+# )
+
+# st.title("🚀 Arc Activity Tracker")
 
 # wallet = st.text_input(
 #     "Wallet Address"
@@ -9,13 +31,60 @@
 
 # if wallet:
 
-#     data = requests.get(
-#         f"http://127.0.0.1:8000/wallet/{wallet}"
-#     ).json()
+#     try:
 
-#     st.json(data)
+#         response = requests.get(
+#             f"http://127.0.0.1:8000/wallets/{wallet}/summary"
+#         )
+
+#         data = response.json()
+
+#         col1, col2, col3 = st.columns(3)
+
+#         with col1:
+#             st.metric(
+#                 "Balance",
+#                 round(data["balance"], 4)
+#             )
+
+#         with col2:
+#             st.metric(
+#                 "Score",
+#                 data["score"]
+#             )
+
+#         with col3:
+#             st.metric(
+#                 "Badge",
+#                 data["badge"]
+#             )
+
+#         st.subheader("Wallet")
+
+#         st.code(
+#             data["address"]
+#         )
+
+#         st.metric(
+#             "Protocols",
+#             len(data["protocols"])
+#         )
+
+#         with st.expander("Protocols Used"):
+
+#             for protocol in data["protocols"]:
+
+#                 st.success(protocol)
+
+#         st.json(data)
+
+#     except Exception as e:
+
+#         st.error(str(e))
 import streamlit as st
 import requests
+
+API_URL = "http://127.0.0.1:8000"
 
 st.set_page_config(
     page_title="Arc Activity Tracker",
@@ -34,12 +103,16 @@ if wallet:
     try:
 
         response = requests.get(
-            f"http://127.0.0.1:8000/wallets/{wallet}/summary"
+            f"{API_URL}/wallets/{wallet}/summary"
         )
 
         data = response.json()
 
-        col1, col2, col3 = st.columns(3)
+        # ==========================
+        # TOP METRICS
+        # ==========================
+
+        col1, col2, col3, col4 = st.columns(4)
 
         with col1:
             st.metric(
@@ -59,25 +132,76 @@ if wallet:
                 data["badge"]
             )
 
-        st.subheader("Wallet")
+        with col4:
+            st.metric(
+                "Protocols",
+                data["protocol_count"]
+            )
 
-        st.code(
-            data["address"]
-        )
+        st.divider()
 
-        st.metric(
-            "Protocols",
-            len(data["protocols"])
-        )
+        # ==========================
+        # ACTIVITY
+        # ==========================
 
-        with st.expander("Protocols Used"):
+        st.subheader("📊 Activity")
 
-            for protocol in data["protocols"]:
+        activity = data["activity"]
 
-                st.success(protocol)
+        col5, col6, col7 = st.columns(3)
 
-        st.json(data)
+        with col5:
+            st.metric(
+                "Transactions",
+                activity.get(
+                    "transactions_count",
+                    0
+                )
+            )
+
+        with col6:
+            st.metric(
+                "Transfers",
+                activity.get(
+                    "token_transfers_count",
+                    0
+                )
+            )
+
+        with col7:
+            st.metric(
+                "Gas Usage",
+                activity.get(
+                    "gas_usage_count",
+                    0
+                )
+            )
+
+        st.divider()
+
+        # ==========================
+        # PROTOCOLS
+        # ==========================
+
+        st.subheader("🌐 Protocols Used")
+
+        for protocol in data["protocols"]:
+
+            st.success(protocol)
+
+        st.divider()
+
+        # ==========================
+        # RAW DATA
+        # ==========================
+
+        with st.expander(
+            "Raw API Response"
+        ):
+            st.json(data)
 
     except Exception as e:
 
-        st.error(str(e))
+        st.error(
+            f"Error: {str(e)}"
+        )

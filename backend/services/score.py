@@ -1,24 +1,39 @@
-def calculate_score(balance):
+def calculate_score(activity, protocols):
 
-    score = 0
+    txs = int(
+        activity.get(
+            "transactions_count",
+            0
+        )
+    )
 
-    if balance > 10:
-        score += 10
+    transfers = int(
+        activity.get(
+            "token_transfers_count",
+            0
+        )
+    )
 
-    if balance > 50:
-        score += 20
+    protocol_count = len(protocols)
 
-    if balance > 100:
-        score += 30
+    score = (
+        txs // 10
+        + transfers // 20
+        + protocol_count * 100
+    )
 
     return score
 
+
 def get_badge(score):
 
-    if score >= 100:
-        return "Power User"
+    if score >= 500:
+        return "Legend"
 
-    if score >= 50:
+    elif score >= 300:
+        return "Master"
+
+    elif score >= 150:
         return "Explorer"
 
-    return "Beginner"
+    return "Newbie"

@@ -1,39 +1,32 @@
-def calculate_score(activity, protocols):
+def calculate_score_v2(
+    balance,
+    tx_count,
+    transfer_count
+):
 
-    txs = int(
-        activity.get(
-            "transactions_count",
-            0
-        )
-    )
+    score = 0
 
-    transfers = int(
-        activity.get(
-            "token_transfers_count",
-            0
-        )
-    )
+    # balance
+    score += min(int(balance / 10), 50)
 
-    protocol_count = len(protocols)
+    # transactions
+    score += min(tx_count, 500)
 
-    score = (
-        txs // 10
-        + transfers // 20
-        + protocol_count * 100
-    )
+    # transfers
+    score += min(transfer_count, 500)
 
     return score
 
-
 def get_badge(score):
 
-    if score >= 500:
-        return "Legend"
+    if score >= 1000:
+        return "Arc Legend"
+
+    elif score >= 700:
+        return "Power User"
 
     elif score >= 300:
-        return "Master"
-
-    elif score >= 150:
         return "Explorer"
 
-    return "Newbie"
+    else:
+        return "Beginner"
