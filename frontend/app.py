@@ -65,6 +65,17 @@ if wallet:
             data["address"]
         )
 
+        st.metric(
+            "Protocols",
+            len(data["protocols"])
+        )
+
+        with st.expander("Protocols Used"):
+
+            for protocol in data["protocols"]:
+
+                st.success(protocol)
+
         st.json(data)
 
     except Exception as e:
