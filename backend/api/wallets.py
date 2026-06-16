@@ -31,6 +31,11 @@ from backend.services.risk import (
 from backend.services.grade import (
     get_grade
 )
+from backend.services.watchlist import (
+    load_watchlist,
+    add_wallet,
+    remove_wallet
+)
 
 router = APIRouter()
 
@@ -53,6 +58,37 @@ def rpc_status():
         "connected": is_connected(),
         "latest_block": latest_block()
     }
+
+# ====================================
+# GET WATCHLIST
+# ====================================
+
+@router.get("/watchlist")
+def get_watchlist():
+
+    return load_watchlist()
+
+# ====================================
+# POST WATCHLIST
+# ====================================
+
+@router.post("/watchlist/{address}")
+def add_to_watchlist(
+    address: str
+):
+
+    return add_wallet(address)
+
+# ====================================
+# DELETE WATCHLIST
+# ====================================
+
+@router.delete("/watchlist/{address}")
+def delete_wallet(
+    address: str
+):
+
+    return remove_wallet(address)
 
 # ====================================
 # WALLET BALANCE
@@ -163,6 +199,7 @@ def wallet_protocols(address: str):
 # ====================================
 # TIMELINE
 # ====================================
+
 @router.get("/{address}/timeline")
 def wallet_timeline(address: str):
 
