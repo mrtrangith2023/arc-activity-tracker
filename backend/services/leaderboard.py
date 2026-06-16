@@ -52,6 +52,7 @@ def get_leaderboard():
 
                 results.append(
                     {
+                        # "wallet": wallet,
                         "wallet":
                             wallet[:6]
                             + "..."
@@ -75,6 +76,7 @@ def get_leaderboard():
 
             results.append(
                 {
+                    # "wallet": wallet,
                     "wallet":
                         wallet[:6]
                         + "..."

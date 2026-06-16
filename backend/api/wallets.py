@@ -1,5 +1,4 @@
 from fastapi import APIRouter, HTTPException
-
 from backend.services.arc_rpc import (
     get_balance,
     is_connected,
@@ -22,6 +21,9 @@ from backend.services.score import (
 )
 from backend.services.leaderboard import (
     get_leaderboard
+)
+from backend.services.timeline import (
+    build_timeline
 )
 
 router = APIRouter()
@@ -151,6 +153,14 @@ def wallet_protocols(address: str):
             status_code=400,
             detail=str(e)
         )
+
+# ====================================
+# TIMELINE
+# ====================================
+@router.get("/{address}/timeline")
+def wallet_timeline(address: str):
+
+    return build_timeline(address)
 
 # ====================================
 # WALLET SUMMARY
