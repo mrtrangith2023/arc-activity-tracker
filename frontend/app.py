@@ -254,8 +254,39 @@ if wallet:
         ):
             st.json(data)
 
-    except Exception as e:
+    # except Exception as e:
 
-        st.error(
-            f"Error: {str(e)}"
-        )
+    #     st.error(
+    #         f"Error: {str(e)}"
+    #     )
+    except requests.exceptions.HTTPError as e:
+
+        if response.status_code == 404:
+
+            st.error(
+                "❌ Wallet not found."
+            )
+
+        elif response.status_code == 400:
+
+            st.warning(
+                """
+                ⚠️ Wallet has no on-chain activity.
+
+                Try:
+                • Swap on UnitFlow
+                • Add Liquidity
+                • Use PredictMarket
+                • Interact with Arc Ecosystem
+                """
+            )
+
+            st.stop()
+
+        else:
+
+            st.error(
+                f"API Error ({response.status_code})"
+            )
+
+        st.stop()
