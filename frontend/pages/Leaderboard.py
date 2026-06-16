@@ -23,6 +23,17 @@ if len(data) == 0:
     st.warning("No wallets found")
 
 else:
+    leader = data[0]
+
+    wallet_short = (
+        leader["wallet"][:6]
+        + "..."
+        + leader["wallet"][-4:]
+    )
+
+    st.success(
+        f"👑 Top Wallet: {wallet_short}"
+    )
 
     df = pd.DataFrame(data)
 
@@ -35,11 +46,27 @@ else:
         use_container_width=True
     )
 
+    chart_df = df.copy()
+
+    chart_df["wallet_short"] = chart_df["wallet"].apply(
+        lambda x: x[:6] + "..." + x[-4:]
+    )
+
+    st.subheader(
+        "📈 Score Ranking"
+    )
+
+    st.bar_chart(
+        chart_df.set_index(
+            "wallet_short"
+        )["score"]
+    )
+
     col1, col2, col3 = st.columns(3)
 
     with col1:
         st.metric(
-            "🥇 Leader",
+            "🥇 Top Score",
             data[0]["score"]
         )
 

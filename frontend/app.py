@@ -1,6 +1,15 @@
 import streamlit as st
 import requests
 import pandas as pd
+import sys
+from pathlib import Path
+
+ROOT = Path(__file__).resolve().parent.parent
+sys.path.append(str(ROOT))
+
+from backend.services.pdf_report import (
+    generate_pdf
+)
 
 API_URL = "http://127.0.0.1:8000"
 
@@ -32,7 +41,7 @@ if wallet:
         # TOP METRICS
         # ==========================
 
-        col1, col2, col3, col4, col5 = st.columns(5)
+        col1, col2, col3, col4, col5, col6 = st.columns(6)
 
         with col1:
             st.metric(
@@ -60,6 +69,12 @@ if wallet:
 
         with col5:
             st.metric(
+                "Grade",
+                data["grade"]
+            )
+
+        with col6:
+            st.metric(
                 "Protocols",
                 data["protocol_count"]
             )
@@ -74,6 +89,36 @@ if wallet:
 
         else:
             st.error("🔴 High Risk Wallet")
+
+        st.divider()
+
+        # ==========================
+        # EXPORT PDF REPORT
+        # ==========================
+
+        if st.button(
+            "📄 Export PDF Report"
+        ):
+
+            pdf_file = generate_pdf(
+                data
+            )
+
+            st.success(
+                "PDF Report Generated"
+            )
+
+            with open(
+                pdf_file,
+                "rb"
+            ) as f:
+
+                st.download_button(
+                    "⬇ Download PDF",
+                    data=f,
+                    file_name=pdf_file,
+                    mime="application/pdf"
+                )
 
         st.divider()
 
@@ -171,10 +216,6 @@ if wallet:
             "timeline",
             []
         )
-
-        # DEBUG
-        # st.write("TIMELINE DEBUG")
-        # st.json(timeline)
 
         st.divider()
 

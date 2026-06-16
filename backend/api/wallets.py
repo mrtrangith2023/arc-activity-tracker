@@ -28,6 +28,9 @@ from backend.services.timeline import (
 from backend.services.risk import (
     calculate_risk
 )
+from backend.services.grade import (
+    get_grade
+)
 
 router = APIRouter()
 
@@ -201,11 +204,15 @@ def wallet_summary(address: str):
         # badge
         badge = get_badge(score)
 
+        # grade
+        grade = get_grade(score)
+
         return {
         "address": address,
         "balance": balance,
         "score": score,
         "badge": badge,
+        "grade": grade,
         "risk": risk,
         "protocol_count": len(protocols),
         "protocols": protocols,

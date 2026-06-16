@@ -62,6 +62,27 @@ if wallet:
             df.set_index("Metric")
         )
 
+        st.divider()
+
+        st.subheader(
+            "🌐 Protocol Distribution"
+        )
+
+        protocols = data["protocols"]
+
+        protocol_df = pd.DataFrame(
+            {
+                "Protocol": protocols,
+                "Count": [1] * len(protocols)
+            }
+        )
+
+        st.bar_chart(
+            protocol_df.set_index(
+                "Protocol"
+            )
+        )
+
     except Exception as e:
 
         st.error(str(e))
