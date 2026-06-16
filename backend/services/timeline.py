@@ -6,6 +6,10 @@ from backend.services.ecosystem import (
     detect_protocols
 )
 
+from backend.services.actions import (
+    detect_action
+)
+
 
 def build_timeline(address):
 
@@ -20,7 +24,7 @@ def build_timeline(address):
         timeline.append(
             {
                 "protocol": protocol,
-                "action": "Interaction"
+                "action": detect_action(protocol)
             }
         )
 

@@ -199,7 +199,8 @@ def wallet_summary(address: str):
             "badge": badge,
             "protocol_count": len(protocols),
             "protocols": protocols,
-            "activity": activity
+            "activity": activity,
+            "timeline": build_timeline(address)
         }
 
     except Exception as e:

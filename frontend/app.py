@@ -112,21 +112,28 @@ if wallet:
 
         st.divider()
 
-        st.subheader("📜 Recent Activity")
+        st.subheader(
+            "📜 Recent Activity"
+        )
 
-        if len(timeline) == 0:
+        icons = {
+            "Bet": "🟢",
+            "Swap": "🔄",
+            "Deposit": "💰",
+            "Stake": "🥩",
+            "Borrow": "🏦"
+        }
 
-            st.info(
-                "No recent activity found"
+        for item in timeline:
+
+            icon = icons.get(
+                item["action"],
+                "⚪"
             )
 
-        else:
-
-            for item in timeline:
-
-                st.success(
-                    f"{item['protocol']} → {item['action']}"
-                )
+            st.info(
+                f"{icon} {item['protocol']} • {item['action']}"
+            )
 
         # ==========================
         # RAW DATA
