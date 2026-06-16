@@ -25,6 +25,9 @@ from backend.services.leaderboard import (
 from backend.services.timeline import (
     build_timeline
 )
+from backend.services.risk import (
+    calculate_risk
+)
 
 router = APIRouter()
 
@@ -189,19 +192,26 @@ def wallet_summary(address: str):
             protocols
         )
 
+        # risk
+        risk = calculate_risk(
+            activity,
+            protocols
+        )
+
         # badge
         badge = get_badge(score)
 
         return {
-            "address": address,
-            "balance": balance,
-            "score": score,
-            "badge": badge,
-            "protocol_count": len(protocols),
-            "protocols": protocols,
-            "activity": activity,
-            "timeline": build_timeline(address)
-        }
+        "address": address,
+        "balance": balance,
+        "score": score,
+        "badge": badge,
+        "risk": risk,
+        "protocol_count": len(protocols),
+        "protocols": protocols,
+        "activity": activity,
+        "timeline": build_timeline(address)
+    }
 
     except Exception as e:
 

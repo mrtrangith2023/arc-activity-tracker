@@ -1,5 +1,6 @@
 import streamlit as st
 import requests
+import pandas as pd
 
 API_URL = "http://127.0.0.1:8000"
 
@@ -23,13 +24,15 @@ if wallet:
             f"{API_URL}/wallets/{wallet}/summary"
         )
 
+        response.raise_for_status()
+
         data = response.json()
 
         # ==========================
         # TOP METRICS
         # ==========================
 
-        col1, col2, col3, col4 = st.columns(4)
+        col1, col2, col3, col4, col5 = st.columns(5)
 
         with col1:
             st.metric(
@@ -51,9 +54,26 @@ if wallet:
 
         with col4:
             st.metric(
+                "Risk",
+                data["risk"]
+            )
+
+        with col5:
+            st.metric(
                 "Protocols",
                 data["protocol_count"]
             )
+
+        # ===== Risk Alert =====
+
+        if data["risk"] == "Low":
+            st.success("🟢 Low Risk Wallet")
+
+        elif data["risk"] == "Medium":
+            st.warning("🟡 Medium Risk Wallet")
+
+        else:
+            st.error("🔴 High Risk Wallet")
 
         st.divider()
 
@@ -94,7 +114,48 @@ if wallet:
                 )
             )
 
+        # st.divider()
         st.divider()
+
+        st.subheader(
+            "📈 Analytics"
+        )
+
+        df = pd.DataFrame(
+            {
+                "Metric": [
+                    "Transactions",
+                    "Transfers",
+                    "Gas Usage"
+                ],
+                "Value": [
+                    int(
+                        activity.get(
+                            "transactions_count",
+                            0
+                        )
+                    ),
+                    int(
+                        activity.get(
+                            "token_transfers_count",
+                            0
+                        )
+                    ),
+                    int(
+                        activity.get(
+                            "gas_usage_count",
+                            0
+                        )
+                    )
+                ]
+            }
+        )
+
+        st.bar_chart(
+            df.set_index(
+                "Metric"
+            )
+        )
 
         # ==========================
         # PROTOCOLS
@@ -106,9 +167,14 @@ if wallet:
 
             st.success(protocol)
 
-        timeline = requests.get(
-            f"{API_URL}/wallets/{wallet}/timeline"
-        ).json()
+        timeline = data.get(
+            "timeline",
+            []
+        )
+
+        # DEBUG
+        # st.write("TIMELINE DEBUG")
+        # st.json(timeline)
 
         st.divider()
 
@@ -127,7 +193,10 @@ if wallet:
         for item in timeline:
 
             icon = icons.get(
-                item["action"],
+                item.get(
+                    "action",
+                    ""
+                ),
                 "⚪"
             )
 
