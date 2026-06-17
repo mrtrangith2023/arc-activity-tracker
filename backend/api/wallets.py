@@ -143,11 +143,11 @@ def activity(address: str):
 
         return get_counters(address)
 
-    except Exception as e:
+    except Exception:
 
         raise HTTPException(
-            status_code=400,
-            detail=str(e)
+            status_code=404,
+            detail="Wallet has no on-chain activity"
         )
 
 

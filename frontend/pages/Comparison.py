@@ -2,6 +2,12 @@ import streamlit as st
 import requests
 import pandas as pd
 
+from requests.exceptions import (
+    Timeout,
+    ConnectionError,
+    HTTPError
+)
+
 API_URL = "http://127.0.0.1:8000"
 
 st.set_page_config(
@@ -20,6 +26,51 @@ wallet2 = st.text_input(
     "Wallet B"
 )
 
+# ==========================
+# VALIDATION
+# ==========================
+
+if wallet1 and wallet2:
+
+    # remove spaces
+    wallet1 = wallet1.strip()
+    wallet2 = wallet2.strip()
+
+    # same wallet
+    if wallet1.lower() == wallet2.lower():
+
+        st.warning(
+            """
+            ⚔️ Wallet Comparison Requires Two Different Wallets
+
+            Comparing the same wallet does not provide meaningful insights.
+
+            Please enter another wallet address.
+            """
+        )
+        st.stop()
+
+def is_valid_wallet(address):
+
+    return (
+        address.startswith("0x")
+        and len(address) == 42
+    )
+
+if wallet1 and not is_valid_wallet(wallet1):
+
+    st.error(
+        "❌ Wallet A is invalid."
+    )
+    st.stop()
+
+if wallet2 and not is_valid_wallet(wallet2):
+
+    st.error(
+        "❌ Wallet B is invalid."
+    )
+    st.stop()
+
 if wallet1 and wallet2:
 
     try:
@@ -29,7 +80,8 @@ if wallet1 and wallet2:
         # ==========================
 
         response1 = requests.get(
-            f"{API_URL}/wallets/{wallet1}/summary"
+            f"{API_URL}/wallets/{wallet1}/summary",
+            timeout=15
         )
 
         response1.raise_for_status()
@@ -37,12 +89,73 @@ if wallet1 and wallet2:
         data1 = response1.json()
 
         response2 = requests.get(
-            f"{API_URL}/wallets/{wallet2}/summary"
+            f"{API_URL}/wallets/{wallet2}/summary",
+            timeout=15
         )
+
+        if response2.status_code == 400:
+
+            st.warning(
+                """
+                ⚠️ Wallet B Has No Activity
+
+                This wallet has not interacted with Arc Testnet yet.
+                """
+            )
+
+            st.stop()
 
         response2.raise_for_status()
 
         data2 = response2.json()
+
+        # ==========================
+        # NO ACTIVITY CHECK
+        # ==========================
+
+        activity1 = data1.get(
+            "activity",
+            {}
+        )
+
+        activity2 = data2.get(
+            "activity",
+            {}
+        )
+
+        wallet1_txs = activity1.get(
+            "transactions_count",
+            0
+        )
+
+        wallet2_txs = activity2.get(
+            "transactions_count",
+            0
+        )
+
+        if wallet1_txs == 0:
+
+            st.warning(
+                """
+                ⚠️ Wallet A has no on-chain activity.
+
+                This wallet has not interacted with Arc Testnet yet.
+                """
+            )
+
+            st.stop()
+
+        if wallet2_txs == 0:
+
+            st.warning(
+                """
+                ⚠️ Wallet B has no on-chain activity.
+
+                This wallet has not interacted with Arc Testnet yet.
+                """
+            )
+
+            st.stop()
 
         # ==========================
         # SAFE DEFAULTS
@@ -67,6 +180,22 @@ if wallet1 and wallet2:
             "protocols",
             []
         )
+
+        if len(protocols1) == 0:
+
+            st.info(
+                """
+                ℹ️ Wallet A has not interacted with any supported protocol.
+                """
+            )
+
+        if len(protocols2) == 0:
+
+            st.info(
+                """
+                ℹ️ Wallet B has not interacted with any supported protocol.
+                """
+            )
 
         # ==========================
         # SHARED PROTOCOLS
@@ -518,8 +647,12 @@ if wallet1 and wallet2:
 
         else:
 
-            st.warning(
-                "No shared protocols"
+            st.info(
+                """
+                🤝 No Shared Protocols
+
+                These wallets have interacted with different ecosystems.
+                """
             )
 
         # ==========================
@@ -535,12 +668,22 @@ if wallet1 and wallet2:
         }
 
         risk_a = risk_map.get(
-            data1["risk"],
+            str(
+                data1.get(
+                    "risk",
+                    ""
+                )
+            ).lower(),
             0
         )
 
         risk_b = risk_map.get(
-            data2["risk"],
+            str(
+                data2.get(
+                    "risk",
+                    ""
+                )
+            ).lower(),
             0
         )
 
@@ -589,13 +732,19 @@ if wallet1 and wallet2:
         with col1:
             st.metric(
                 "Wallet A Risk",
-                data1["risk"]
+                data1.get(
+                    "risk",
+                    "Unknown"
+                )
             )
 
         with col2:
             st.metric(
                 "Wallet B Risk",
-                data2["risk"]
+                data2.get(
+                    "risk",
+                    "Unknown"
+                )
             )
 
         with col3:
@@ -618,8 +767,51 @@ if wallet1 and wallet2:
                     "🤝 Same Risk Level"
                 )
 
+    except Timeout:
+
+        st.error(
+            """
+            ⏱ Arc Network Timeout
+
+            ArcScan did not respond in time.
+
+            Please try again later.
+            """
+        )
+
+    except ConnectionError:
+
+        st.error(
+            """
+            🔌 Unable to connect to Arc API
+
+            Please check that the backend service is running.
+            """
+        )
+
+    except HTTPError as e:
+
+        if "400" in str(e):
+
+            st.warning(
+                """
+                ⚠️ Wallet Not Active
+
+                One of the wallets has no on-chain activity on Arc Testnet.
+
+                Please choose a wallet that has completed at least one transaction.
+                """
+            )
+
+        else:
+
+            st.error(
+                f"API Error: {e}"
+            )
+
+
     except Exception as e:
 
         st.error(
-            f"Error: {str(e)}"
+            f"Unexpected Error: {str(e)}"
         )

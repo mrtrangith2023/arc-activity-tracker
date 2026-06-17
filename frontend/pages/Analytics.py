@@ -83,6 +83,21 @@ if wallet:
             )
         )
 
+    # except Exception as e:
+
+    #     st.error(str(e))
+    except KeyError:
+
+        st.warning(
+            """
+            ⚠️ No On-Chain Activity Found
+
+            This wallet has no recorded activity on Arc Testnet.
+            """
+        )
+
     except Exception as e:
 
-        st.error(str(e))
+        st.error(
+            f"Unexpected Error: {e}"
+        )

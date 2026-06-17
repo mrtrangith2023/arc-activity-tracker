@@ -88,7 +88,7 @@ def get_leaderboard():
     # Lọc ví có điểm > 0
     results = [
         r for r in results
-        if r["score"] > 0
+        if r.get("score", 0) > 0
     ]
 
     # Loại 1
