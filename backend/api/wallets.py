@@ -1,5 +1,4 @@
 from datetime import datetime
-from backend.models.score_history import ScoreHistory
 from backend.services.arc_rpc import (
     get_balance,
     is_connected,
@@ -45,7 +44,6 @@ from fastapi import (
 from sqlalchemy.orm import Session
 from backend.models.database import get_db
 from backend.models.score_history import ScoreHistory
-from backend.models.database import Base
 
 router = APIRouter()
 
@@ -227,34 +225,26 @@ def wallet_summary(
 
     try:
 
-        # balance
         balance = get_balance(address)
 
-        # activity
         activity = get_counters(address)
 
-        # transactions
         txs = get_transactions(address)
 
-        # protocols
         protocols = detect_protocols(txs)
 
-        # score
         score = calculate_score(
             activity,
             protocols
         )
 
-        # risk
         risk = calculate_risk(
             activity,
             protocols
         )
 
-        # badge
         badge = get_badge(score)
 
-        # grade
         grade = get_grade(score)
 
         history = ScoreHistory(
@@ -265,23 +255,21 @@ def wallet_summary(
             created_at=datetime.utcnow()
         )
 
-        db = next(get_db())
-
         db.add(history)
         db.commit()
 
         return {
-        "address": address,
-        "balance": balance,
-        "score": score,
-        "badge": badge,
-        "grade": grade,
-        "risk": risk,
-        "protocol_count": len(protocols),
-        "protocols": protocols,
-        "activity": activity,
-        "timeline": build_timeline(address)
-    }
+            "address": address,
+            "balance": balance,
+            "score": score,
+            "badge": badge,
+            "grade": grade,
+            "risk": risk,
+            "protocol_count": len(protocols),
+            "protocols": protocols,
+            "activity": activity,
+            "timeline": build_timeline(address)
+        }
 
     except Exception as e:
 

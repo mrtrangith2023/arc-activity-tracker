@@ -38,6 +38,14 @@ if wallet:
 
         df = pd.DataFrame(history)
 
+        df["created_at"] = pd.to_datetime(
+            df["created_at"]
+        )
+
+        df["time"] = df["created_at"].dt.strftime(
+            "%H:%M:%S"
+        )
+
         st.subheader(
             "📜 History Records"
         )
@@ -48,19 +56,41 @@ if wallet:
         )
 
         # ==========================
+        # GRADE TIMELINE
+        # ==========================
+
+        if "grade" in df.columns:
+
+            st.subheader(
+                "🎓 Grade Timeline"
+            )
+
+            grade_df = df[[
+
+                "created_at",
+                "grade"
+
+            ]].copy()
+
+            st.dataframe(
+                grade_df,
+                use_container_width=True
+            )
+
+        # ==========================
         # SCORE HISTORY
         # ==========================
 
         if "score" in df.columns:
 
             score_df = df[[
-                "created_at",
+                "time",
                 "score"
             ]].copy()
 
             score_df = score_df.rename(
                 columns={
-                    "created_at": "Date",
+                    "time": "Time",
                     "score": "Score"
                 }
             )
@@ -71,7 +101,7 @@ if wallet:
 
             st.line_chart(
                 score_df.set_index(
-                    "Date"
+                    "Time"
                 )
             )
 
@@ -82,13 +112,13 @@ if wallet:
         if "balance" in df.columns:
 
             balance_df = df[[
-                "created_at",
+                "time",
                 "balance"
             ]].copy()
 
             balance_df = balance_df.rename(
                 columns={
-                    "created_at": "Date",
+                    "time": "Time",
                     "balance": "Balance"
                 }
             )
@@ -99,7 +129,44 @@ if wallet:
 
             st.line_chart(
                 balance_df.set_index(
-                    "Date"
+                    "Time"
+                )
+            )
+
+        # ==========================
+        # HISTORICAL ANALYTICS
+        # ==========================
+
+        st.subheader(
+            "📊 Historical Analytics"
+        )
+
+        col1, col2, col3 = st.columns(3)
+
+        with col1:
+
+            st.metric(
+                "Snapshots",
+                len(df)
+            )
+
+        with col2:
+
+            st.metric(
+                "Average Score",
+                round(
+                    df["score"].mean(),
+                    2
+                )
+            )
+
+        with col3:
+
+            st.metric(
+                "Average Balance",
+                round(
+                    df["balance"].mean(),
+                    4
                 )
             )
 
@@ -143,7 +210,48 @@ if wallet:
                 "🚀 Wallet Growth"
             )
 
-            col1, col2 = st.columns(2)
+            # ==========================
+            # BALANCE GROWTH
+            # ==========================
+
+            df = df.sort_values(
+                by="created_at",
+                ascending=True
+            )
+
+            first_balance = float(
+                df.iloc[0]["balance"]
+            )
+
+            last_balance = float(
+                df.iloc[-1]["balance"]
+            )
+
+            balance_growth = round(
+                last_balance - first_balance,
+                4
+            )
+
+            if first_balance > 0:
+
+                balance_growth_percent = round(
+                    (
+                        balance_growth
+                        /
+                        first_balance
+                    ) * 100,
+                    4
+                )
+
+            else:
+
+                balance_growth_percent = 0
+
+            # ==========================
+            # WALLET GROWTH METRICS
+            # ==========================
+
+            col1, col2, col3, col4, col5, col6 = st.columns(6)
 
             with col1:
 
@@ -155,8 +263,63 @@ if wallet:
             with col2:
 
                 st.metric(
-                    "Growth %",
+                    "Score %",
                     f"{growth_percent}%"
+                )
+
+            with col3:
+
+                st.metric(
+                    "Balance Growth",
+                    balance_growth
+                )
+
+            with col4:
+
+                st.metric(
+                    "Balance %",
+                    f"{balance_growth_percent}%"
+                )
+
+            with col5:
+
+                st.metric(
+                    "Current Score",
+                    last_score
+                )
+
+            with col6:
+
+                st.metric(
+                    "Highest Score",
+                    df["score"].max()
+                )
+
+            col7, col8 = st.columns(2)
+
+            with col7:
+                st.metric(
+                    "Current Grade",
+                    df.iloc[-1]["grade"]
+                )
+
+            grade_rank = {
+                "D":1,
+                "C":2,
+                "B":3,
+                "A":4,
+                "S":5
+            }
+
+            best_grade = max(
+                df["grade"],
+                key=lambda x: grade_rank.get(x, 0)
+            )
+
+            with col8:
+                st.metric(
+                    "Best Grade",
+                    best_grade
                 )
 
     except Exception as e:
