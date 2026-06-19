@@ -1,4 +1,5 @@
-from fastapi import APIRouter, HTTPException
+from datetime import datetime
+from backend.models.score_history import ScoreHistory
 from backend.services.arc_rpc import (
     get_balance,
     is_connected,
@@ -36,6 +37,15 @@ from backend.services.watchlist import (
     add_wallet,
     remove_wallet
 )
+from fastapi import (
+    APIRouter,
+    HTTPException,
+    Depends
+)
+from sqlalchemy.orm import Session
+from backend.models.database import get_db
+from backend.models.score_history import ScoreHistory
+from backend.models.database import Base
 
 router = APIRouter()
 
@@ -210,7 +220,10 @@ def wallet_timeline(address: str):
 # ====================================
 
 @router.get("/{address}/summary")
-def wallet_summary(address: str):
+def wallet_summary(
+    address: str,
+    db: Session = Depends(get_db)
+):
 
     try:
 
@@ -244,6 +257,19 @@ def wallet_summary(address: str):
         # grade
         grade = get_grade(score)
 
+        history = ScoreHistory(
+            wallet=address,
+            score=score,
+            balance=balance,
+            grade=grade,
+            created_at=datetime.utcnow()
+        )
+
+        db = next(get_db())
+
+        db.add(history)
+        db.commit()
+
         return {
         "address": address,
         "balance": balance,
@@ -263,3 +289,29 @@ def wallet_summary(address: str):
             status_code=400,
             detail=str(e)
         )
+    
+@router.get("/{wallet}/history")
+def get_history(
+    wallet: str,
+    db: Session = Depends(get_db)
+):
+
+    rows = (
+
+        db.query(
+            ScoreHistory
+        )
+
+        .filter(
+            ScoreHistory.wallet == wallet
+        )
+
+        .order_by(
+            ScoreHistory.created_at
+        )
+
+        .all()
+
+    )
+
+    return rows
