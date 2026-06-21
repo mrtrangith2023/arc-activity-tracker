@@ -79,6 +79,28 @@ import pandas as pd
 
 API_URL = "http://127.0.0.1:8000"
 
+
+def format_delta(delta):
+
+    if delta > 0:
+
+        return f"+{delta:g}"
+
+    return f"{delta:g}"
+
+
+def score_indicator(delta):
+
+    if delta > 0:
+
+        return "Increase"
+
+    if delta < 0:
+
+        return "Decrease"
+
+    return "Unchanged"
+
 st.title(
     "⭐ Watchlist Manager"
 )
@@ -117,21 +139,63 @@ if st.button(
 # LOAD WATCHLIST
 # ====================
 
-wallets = requests.get(
-    f"{API_URL}/wallets/watchlist"
-).json()
+status_response = requests.get(
+    f"{API_URL}/wallets/watchlist-status"
+)
+
+if status_response.status_code == 200:
+
+    watchlist_status = status_response.json()
+
+else:
+
+    st.error(
+        status_response.text
+    )
+
+    st.stop()
+
+wallets = [
+    item.get(
+        "wallet"
+    )
+    for item in watchlist_status
+]
 
 st.write(
     f"Total Wallets: {len(wallets)}"
 )
 
-df = pd.DataFrame(
-    wallets,
-    columns=["Wallet"]
-)
+df = pd.DataFrame(watchlist_status)
+
+if not df.empty:
+
+    df["Indicator"] = df["delta"].apply(score_indicator)
+
+    df["Delta"] = df["delta"].apply(format_delta)
+
+    df = df.rename(
+        columns={
+            "wallet": "Wallet",
+            "current_score": "Current Score",
+            "previous_score": "Previous Score"
+        }
+    )
+
+    display_columns = [
+        "Wallet",
+        "Current Score",
+        "Previous Score",
+        "Delta",
+        "Indicator"
+    ]
+
+else:
+
+    display_columns = []
 
 st.dataframe(
-    df,
+    df[display_columns] if display_columns else df,
     use_container_width=True
 )
 

@@ -28,6 +28,9 @@ from backend.services.timeline import (
 from backend.services.risk import (
     calculate_risk
 )
+from backend.services.wallet_intelligence import (
+    build_wallet_insights
+)
 from backend.services.grade import (
     get_grade
 )
@@ -377,6 +380,83 @@ def get_watchlist():
 
     return load_watchlist()
 
+
+# ====================================
+# WATCHLIST STATUS
+# ====================================
+
+@router.get("/watchlist-status")
+def watchlist_status(
+    db: Session = Depends(get_db)
+):
+
+    wallets = load_watchlist()
+
+    result = []
+
+    for wallet in wallets:
+
+        rows = (
+
+            db.query(
+                ScoreHistory
+            )
+
+            .filter(
+                ScoreHistory.wallet == wallet
+            )
+
+            .order_by(
+                ScoreHistory.created_at.desc()
+            )
+
+            .limit(2)
+
+            .all()
+
+        )
+
+        current_score = None
+        previous_score = None
+        delta = 0
+
+        if rows:
+
+            current_score = rows[0].score
+
+        if len(rows) > 1:
+
+            previous_score = rows[1].score
+            delta = current_score - previous_score
+
+        if delta > 0:
+
+            direction = "increase"
+            indicator = "up"
+
+        elif delta < 0:
+
+            direction = "decrease"
+            indicator = "down"
+
+        else:
+
+            direction = "unchanged"
+            indicator = "flat"
+
+        result.append(
+            {
+                "wallet": wallet,
+                "current_score": current_score,
+                "previous_score": previous_score,
+                "delta": delta,
+                "direction": direction,
+                "indicator": indicator
+            }
+        )
+
+    return result
+
 # ====================================
 # POST WATCHLIST
 # ====================================
@@ -460,6 +540,13 @@ def wallet_summary(
 
         grade = get_grade(score)
 
+        insights = build_wallet_insights(
+            activity,
+            protocols,
+            score,
+            txs
+        )
+
         history = ScoreHistory(
             wallet=address,
             score=score,
@@ -485,6 +572,9 @@ def wallet_summary(
             "protocol_count": len(protocols),
             "protocols": protocols,
             "activity": activity,
+            "strengths": insights["strengths"],
+            "weaknesses": insights["weaknesses"],
+            "recommendations": insights["recommendations"],
             "timeline": build_timeline(address)
         }
 

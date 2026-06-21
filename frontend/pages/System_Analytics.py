@@ -1,8 +1,94 @@
-import streamlit as st
-import requests
 import pandas as pd
+import requests
+import streamlit as st
+
+from requests.exceptions import RequestException
+
 
 API_URL = "http://127.0.0.1:8000"
+
+
+def get_json(path, fallback):
+    try:
+        response = requests.get(
+            f"{API_URL}{path}",
+            timeout=20
+        )
+        response.raise_for_status()
+        return response.json()
+
+    except RequestException as error:
+        st.warning(f"Could not load {path}: {error}")
+        return fallback
+
+
+def short_wallet(wallet):
+    wallet = str(wallet)
+
+    if len(wallet) <= 14 or "..." in wallet:
+        return wallet
+
+    return f"{wallet[:6]}...{wallet[-4:]}"
+
+
+def protocols_count(value):
+    if value is None:
+        return 0
+
+    if isinstance(value, list):
+        return len(value)
+
+    return len(
+        [
+            item
+            for item in str(value).split(",")
+            if item.strip()
+        ]
+    )
+
+
+def latest_wallet_ranking(rows):
+    df = pd.DataFrame(rows)
+
+    if df.empty or "score" not in df.columns:
+        return pd.DataFrame()
+
+    df = df.sort_values(
+        by="score",
+        ascending=False
+    ).reset_index(drop=True)
+
+    df.insert(0, "Rank", df.index + 1)
+
+    if "wallet" in df.columns:
+        df["Wallet"] = df["wallet"].apply(short_wallet)
+
+    if "protocols" in df.columns:
+        df["Protocol Count"] = df["protocols"].apply(protocols_count)
+
+    return df
+
+
+def protocol_ranking_table(rows):
+    df = pd.DataFrame(rows)
+
+    if df.empty or "protocol" not in df.columns:
+        return pd.DataFrame()
+
+    if "users" not in df.columns:
+        df["users"] = 0
+
+    df = df.sort_values(
+        by="users",
+        ascending=False
+    ).reset_index(drop=True)
+
+    total_users = max(int(df["users"].sum()), 1)
+    df.insert(0, "Rank", df.index + 1)
+    df["Share"] = (df["users"] / total_users * 100).round(1)
+
+    return df
+
 
 st.set_page_config(
     page_title="System Analytics",
@@ -10,59 +96,59 @@ st.set_page_config(
     layout="wide"
 )
 
-st.title(
-    "📊 System Analytics"
+st.title("📊 System Analytics")
+
+overview = get_json(
+    "/wallets/analytics",
+    {
+        "wallets": 0,
+        "snapshots": 0,
+        "avg_score": 0,
+        "avg_balance": 0
+    }
 )
 
-# ==================================
-# OVERVIEW
-# ==================================
-
-overview = requests.get(
-    f"{API_URL}/wallets/analytics"
-).json()
-
-st.subheader(
-    "📈 Ecosystem Overview"
+health = get_json(
+    "/wallets/health-score",
+    {
+        "health_score": 0
+    }
 )
-
-health = requests.get(
-    f"{API_URL}/wallets/health-score"
-).json()
-
-# st.metric(
-#     "Ecosystem Health",
-#     f"{health['health_score']}%"
-# )
-health_score = health[
-    "health_score"
-]
 
 health_score = float(
-    health["health_score"]
-)
-if health_score >= 70:
-
-    st.success(
-        "🟢 Ecosystem Status: Healthy"
+    health.get(
+        "health_score",
+        0
     )
+)
+
+st.subheader("Ecosystem Overview")
+
+if health_score >= 70:
+    st.success("Ecosystem status: Healthy")
 
 elif health_score >= 40:
-
-    st.warning(
-        "🟡 Ecosystem Status: Growing"
-    )
+    st.warning("Ecosystem status: Growing")
 
 else:
+    st.error("Ecosystem status: Early stage")
 
-    st.error(
-        "🔴 Ecosystem Status: Early Stage"
-    )
+col1, col2, col3, col4, col5 = st.columns(5)
 
-st.metric(
-    "Ecosystem Health",
-    f"{health_score}%"
-)
+with col1:
+    st.metric("Health", f"{health_score}%")
+
+with col2:
+    st.metric("Wallets", overview.get("wallets", 0))
+
+with col3:
+    st.metric("Snapshots", overview.get("snapshots", 0))
+
+with col4:
+    st.metric("Average score", overview.get("avg_score", 0))
+
+with col5:
+    st.metric("Average balance", overview.get("avg_balance", 0))
 
 st.progress(
     min(
@@ -71,242 +157,233 @@ st.progress(
     )
 )
 
-# ==================================
-# ECOSYSTEM TREND
-# ==================================
-
 st.divider()
 
-st.subheader(
-    "📈 Ecosystem Trend"
-)
+st.subheader("Ecosystem Trend")
 
-trend = requests.get(
-    f"{API_URL}/wallets/ecosystem-trend"
-).json()
+trend = get_json(
+    "/wallets/ecosystem-trend",
+    {
+        "wallet_growth": 0,
+        "snapshot_growth": 0,
+        "avg_score_growth": 0
+    }
+)
 
 col1, col2, col3 = st.columns(3)
 
 with col1:
-
-    st.metric(
-        "Wallet Growth",
-        trend["wallet_growth"]
-    )
+    st.metric("Wallet growth", trend.get("wallet_growth", 0))
 
 with col2:
-
-    st.metric(
-        "Snapshot Growth",
-        trend["snapshot_growth"]
-    )
+    st.metric("Snapshot growth", trend.get("snapshot_growth", 0))
 
 with col3:
-
-    st.metric(
-        "Average Score",
-        trend["avg_score_growth"]
-    )
-
-# ==================================
-# GRADE DISTRIBUTION
-# ==================================
+    st.metric("Average score", trend.get("avg_score_growth", 0))
 
 st.divider()
 
-st.subheader(
-    "🎓 Grade Distribution"
-)
+st.subheader("Grade Distribution")
 
-grades = requests.get(
-    f"{API_URL}/wallets/grade-distribution"
-).json()
+grades = get_json(
+    "/wallets/grade-distribution",
+    {}
+)
 
 grade_df = pd.DataFrame(
     [
-        [k, v]
-        for k, v in grades.items()
-        if v > 0
-    ],
-    columns=[
-        "Grade",
-        "Wallets"
+        {
+            "Grade": grade,
+            "Wallets": count
+        }
+        for grade, count in grades.items()
+        if count > 0
     ]
 )
 
-st.bar_chart(
-    grade_df.set_index(
-        "Grade"
+if grade_df.empty:
+    st.info("No grade data available yet.")
+
+else:
+    st.bar_chart(
+        grade_df.set_index("Grade")["Wallets"]
     )
-)
-
-col1, col2, col3, col4 = st.columns(4)
-
-with col1:
-
-    st.metric(
-        "Wallets",
-        overview["wallets"]
-    )
-
-with col2:
-
-    st.metric(
-        "Snapshots",
-        overview["snapshots"]
-    )
-
-with col3:
-
-    st.metric(
-        "Average Score",
-        overview["avg_score"]
-    )
-
-with col4:
-
-    st.metric(
-        "Average Balance",
-        overview["avg_balance"]
-    )
-
-# ==================================
-# TOP PROTOCOLS
-# ==================================
-st.divider()
-
-st.subheader(
-    "🌐 Top Protocols"
-)
-
-protocols = requests.get(
-    f"{API_URL}/wallets/top-protocols"
-).json()
-
-protocol_df = pd.DataFrame(
-    {
-        "Protocol": protocols,
-        "Usage": [1] * len(protocols)
-    }
-)
-
-st.bar_chart(
-    protocol_df.set_index(
-        "Protocol"
-    )
-)
-
-# ==================================
-# TOP WALLETS
-# ==================================
-
-# st.divider()
-
-# st.subheader(
-#     "🏆 Top Wallets"
-# )
-
-# top_wallets = requests.get(
-#     f"{API_URL}/wallets/top-wallets"
-# ).json()
-
-# df = pd.DataFrame(
-#     top_wallets
-# )
-
-# if len(df) > 0:
-
-#     st.dataframe(
-#         df,
-#         use_container_width=True
-#     )
-
-# ==================================
-# WALLETS RANKING
-# ==================================
-st.divider()
-
-st.subheader(
-    "🏆 Wallet Ranking"
-)
-
-ranking = requests.get(
-    f"{API_URL}/wallets/ranking"
-).json()
-
-ranking_df = pd.DataFrame(
-    ranking
-)
-
-# ranking_df = ranking_df[
-#     [
-#         "wallet",
-#         "score",
-#         "grade",
-#         "balance"
-#     ]
-# ]
-ranking_df["wallet"] = ranking_df[
-    "wallet"
-].apply(
-    lambda x:
-    f"{x[:8]}...{x[-6:]}"
-)
-
-st.dataframe(
-    ranking_df,
-    use_container_width=True
-)
-
-# ==================================
-# PROTOCOL RANKING
-# ==================================
 
 st.divider()
 
-st.subheader(
-    "🏆 Protocol Ranking"
+st.subheader("Leaderboard")
+
+ranking = get_json(
+    "/wallets/ranking",
+    []
 )
 
-protocol_rank = requests.get(
-    f"{API_URL}/wallets/protocol-ranking"
-).json()
+ranking_df = latest_wallet_ranking(ranking)
 
-if protocol_rank:
+if ranking_df.empty:
+    st.info("No wallet ranking data available yet.")
 
-    protocol_rank_df = pd.DataFrame(
-        protocol_rank
+else:
+    top_wallet = ranking_df.iloc[0]
+    avg_score = round(ranking_df["score"].mean(), 2)
+
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        st.metric("Top wallet", top_wallet.get("Wallet", "-"))
+
+    with col2:
+        st.metric("Top score", top_wallet.get("score", 0))
+
+    with col3:
+        st.metric("Average ranked score", avg_score)
+
+    chart_df = ranking_df.head(10).copy()
+
+    if "Wallet" not in chart_df.columns:
+        chart_df["Wallet"] = chart_df["Rank"].astype(str)
+
+    chart_df["Label"] = (
+        chart_df["Rank"].astype(str)
+        + ". "
+        + chart_df["Wallet"]
     )
 
-    protocol_rank_df = protocol_rank_df.sort_values(
-        by="users",
-        ascending=False
+    st.bar_chart(
+        chart_df.set_index("Label")["score"]
+    )
+
+    display_columns = [
+        column
+        for column in [
+            "Rank",
+            "Wallet",
+            "score",
+            "grade",
+            "balance",
+            "Protocol Count",
+            "created_at"
+        ]
+        if column in ranking_df.columns
+    ]
+
+    st.dataframe(
+        ranking_df[display_columns],
+        hide_index=True,
+        use_container_width=True,
+        column_config={
+            "score": st.column_config.ProgressColumn(
+                "Score",
+                min_value=0,
+                max_value=max(int(ranking_df["score"].max()), 1),
+                format="%d"
+            ),
+            "balance": st.column_config.NumberColumn(
+                "Balance",
+                format="%.4f"
+            )
+        }
+    )
+
+st.divider()
+
+st.subheader("Protocol Ranking")
+
+protocol_rank = get_json(
+    "/wallets/protocol-ranking",
+    []
+)
+
+protocol_rank_df = protocol_ranking_table(protocol_rank)
+
+if protocol_rank_df.empty:
+    st.info("No protocol ranking data available yet.")
+
+else:
+    total_protocols = len(protocol_rank_df)
+    total_mentions = int(protocol_rank_df["users"].sum())
+    top_protocol = protocol_rank_df.iloc[0]
+
+    col1, col2, col3 = st.columns(3)
+
+    with col1:
+        st.metric("Tracked protocols", total_protocols)
+
+    with col2:
+        st.metric("Protocol mentions", total_mentions)
+
+    with col3:
+        st.metric("Most used", top_protocol["protocol"])
+
+    chart_df = protocol_rank_df.head(10).copy()
+    chart_df["Label"] = (
+        chart_df["Rank"].astype(str)
+        + ". "
+        + chart_df["protocol"].astype(str)
+    )
+
+    st.bar_chart(
+        chart_df.set_index("Label")["users"]
     )
 
     st.dataframe(
-        protocol_rank_df,
+        protocol_rank_df[
+            [
+                "Rank",
+                "protocol",
+                "users",
+                "Share"
+            ]
+        ],
+        hide_index=True,
+        use_container_width=True,
+        column_config={
+            "users": st.column_config.NumberColumn(
+                "Users",
+                format="%d"
+            ),
+            "Share": st.column_config.ProgressColumn(
+                "Share",
+                min_value=0,
+                max_value=100,
+                format="%.1f%%"
+            )
+        }
+    )
+
+st.divider()
+
+st.subheader("Supported Protocols")
+
+protocols = get_json(
+    "/wallets/top-protocols",
+    []
+)
+
+if protocols:
+    protocol_df = pd.DataFrame(
+        {
+            "Protocol": protocols
+        }
+    )
+
+    st.dataframe(
+        protocol_df,
+        hide_index=True,
         use_container_width=True
     )
 
 else:
-
-    st.info(
-        "No protocol ranking data available."
-    )
-
-# ==================================
-# RISK DISTRIBUTION
-# ==================================
+    st.info("No supported protocols configured.")
 
 st.divider()
 
-st.subheader(
-    "⚠️ Risk Distribution"
-)
+st.subheader("Risk Distribution")
 
-risk = requests.get(
-    f"{API_URL}/wallets/risk-distribution"
-).json()
+risk = get_json(
+    "/wallets/risk-distribution",
+    {}
+)
 
 risk_df = pd.DataFrame(
     {
@@ -324,7 +401,5 @@ risk_df = pd.DataFrame(
 )
 
 st.bar_chart(
-    risk_df.set_index(
-        "Risk"
-    )
+    risk_df.set_index("Risk")["Wallets"]
 )
