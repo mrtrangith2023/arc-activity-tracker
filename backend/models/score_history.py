@@ -2,6 +2,7 @@ from sqlalchemy import Column
 from sqlalchemy import Integer
 from sqlalchemy import Float
 from sqlalchemy import String
+from sqlalchemy import Text
 from sqlalchemy import DateTime
 from datetime import datetime
 
@@ -27,6 +28,8 @@ class ScoreHistory(Base):
     balance = Column(Float)
 
     grade = Column(String)
+
+    protocols = Column(Text)
 
     created_at = Column(
         DateTime,

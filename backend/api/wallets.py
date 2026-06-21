@@ -44,16 +44,11 @@ from fastapi import (
 from sqlalchemy.orm import Session
 from backend.models.database import get_db
 from backend.models.score_history import ScoreHistory
+from backend.services.protocol_analytics import (
+    get_protocol_ranking
+)
 
 router = APIRouter()
-
-# ===================================
-# Leaderboard
-# ===================================   
-@router.get("/leaderboard")
-def leaderboard():
-
-    return get_leaderboard()
 
 # ====================================
 # RPC STATUS
@@ -66,6 +61,312 @@ def rpc_status():
         "connected": is_connected(),
         "latest_block": latest_block()
     }
+
+# ===================================
+# ECOSYSTEM TREND
+# ===================================
+
+@router.get("/ecosystem-trend")
+def ecosystem_trend(
+    db: Session = Depends(get_db)
+):
+
+    rows = db.query(
+        ScoreHistory
+    ).all()
+
+    if not rows:
+
+        return {
+            "wallet_growth": 0,
+            "snapshot_growth": 0,
+            "avg_score_growth": 0
+        }
+
+    wallets = len(
+        set(
+            row.wallet
+            for row in rows
+        )
+    )
+
+    snapshots = len(rows)
+
+    avg_score = round(
+        sum(
+            row.score
+            for row in rows
+        ) / snapshots,
+        2
+    )
+
+    return {
+        "wallet_growth": wallets,
+        "snapshot_growth": snapshots,
+        "avg_score_growth": avg_score
+    }
+
+# ===================================
+# TOP PROTOCOLS
+# ===================================
+
+@router.get("/top-protocols")
+def top_protocols():
+
+    return [
+        "UnitFlow",
+        "PredictMarket",
+        "XyloVault",
+        "XyloStablePool"
+    ]
+    
+# ===================================
+# ANALYTICS
+# ===================================
+
+@router.get("/analytics")
+def analytics(
+    db: Session = Depends(get_db)
+):
+
+    rows = db.query(
+        ScoreHistory
+    ).all()
+
+    if not rows:
+
+        return {
+            "wallets": 0,
+            "snapshots": 0,
+            "avg_score": 0,
+            "avg_balance": 0
+        }
+
+    wallets = len(
+        set(
+            row.wallet
+            for row in rows
+        )
+    )
+
+    snapshots = len(rows)
+
+    avg_score = round(
+        sum(
+            row.score
+            for row in rows
+        ) / snapshots,
+        2
+    )
+
+    avg_balance = round(
+        sum(
+            row.balance
+            for row in rows
+        ) / snapshots,
+        2
+    )
+
+    return {
+        "wallets": wallets,
+        "snapshots": snapshots,
+        "avg_score": avg_score,
+        "avg_balance": avg_balance
+    }
+
+
+# ====================================
+# WALLET RANKING
+# ====================================
+
+@router.get("/ranking")
+def wallet_ranking(
+    db: Session = Depends(get_db)
+):
+
+    rows = db.query(
+        ScoreHistory
+    ).all()
+
+    latest_wallets = {}
+
+    for row in rows:
+
+        if (
+            row.wallet not in latest_wallets
+            or
+            row.created_at >
+            latest_wallets[row.wallet].created_at
+        ):
+
+            latest_wallets[row.wallet] = row
+
+    ranking = list(
+        latest_wallets.values()
+    )
+
+    ranking.sort(
+        key=lambda x: x.score,
+        reverse=True
+    )
+
+    return ranking[:20]
+
+
+# ====================================
+# GRADE DISTRIBUTION
+# ====================================
+
+@router.get("/grade-distribution")
+def grade_distribution(
+    db: Session = Depends(get_db)
+):
+
+    rows = db.query(
+        ScoreHistory
+    ).all()
+
+    grades = {
+        "S": 0,
+        "A": 0,
+        "B": 0,
+        "C": 0,
+        "D": 0
+    }
+
+    latest_wallets = {}
+
+    for row in rows:
+
+        if (
+            row.wallet not in latest_wallets
+            or
+            row.created_at >
+            latest_wallets[row.wallet].created_at
+        ):
+
+            latest_wallets[row.wallet] = row
+
+    for wallet in latest_wallets.values():
+
+        grade = wallet.grade
+
+        if grade in grades:
+
+            grades[grade] += 1
+
+    return grades
+
+
+# ====================================
+# ECOSYSTEM HEALTH
+# ====================================
+
+@router.get("/health-score")
+def health_score(
+    db: Session = Depends(get_db)
+):
+
+    rows = db.query(
+        ScoreHistory
+    ).all()
+
+    if not rows:
+
+        return {
+            "health_score": 0
+        }
+
+    avg_score = (
+
+        sum(
+            row.score
+            for row in rows
+        )
+
+        /
+
+        len(rows)
+
+    )
+
+    health = round(
+        (
+            avg_score
+            /
+            5000
+        )
+        * 100,
+        2
+    )
+
+    return {
+        "health_score": health
+    }
+
+# ===================================
+# PROTOCOL RANKING
+# ===================================
+
+@router.get("/protocol-ranking")
+def protocol_ranking(
+    db: Session = Depends(get_db)
+):
+
+    rows = db.query(
+        ScoreHistory
+    ).all()
+
+    ranking = get_protocol_ranking(
+        rows
+    )
+
+    return ranking
+
+# ===================================
+# RISK DISTRIBUTION
+# ===================================
+
+@router.get("/risk-distribution")
+def risk_distribution(
+    db: Session = Depends(get_db)
+):
+
+    rows = db.query(
+        ScoreHistory
+    ).all()
+
+    result = {
+        "Low": 0,
+        "Medium": 0,
+        "High": 0
+    }
+
+    for row in rows:
+
+        if row.score >= 1000:
+
+            result["Low"] += 1
+
+        elif row.score >= 300:
+
+            result["Medium"] += 1
+
+        else:
+
+            result["High"] += 1
+
+    return result
+
+# ===================================
+# Leaderboard
+# ===================================
+   
+@router.get("/leaderboard")
+def leaderboard():
+
+    return get_leaderboard()
+
 
 # ====================================
 # GET WATCHLIST
@@ -97,6 +398,132 @@ def delete_wallet(
 ):
 
     return remove_wallet(address)
+
+# ====================================
+# TOP-WALLETS
+# ====================================
+
+@router.get("/top-wallets")
+def top_wallets(
+    db: Session = Depends(get_db)
+):
+
+    rows = (
+
+        db.query(
+            ScoreHistory
+        )
+
+        .order_by(
+            ScoreHistory.score.desc()
+        )
+
+        .limit(20)
+
+        .all()
+
+    )
+
+    return rows
+
+# ====================================
+# WALLET SUMMARY
+# ====================================
+
+@router.get("/{address}/summary")
+def wallet_summary(
+    address: str,
+    db: Session = Depends(get_db)
+):
+
+    try:
+
+        balance = get_balance(address)
+
+        activity = get_counters(address)
+
+        txs = get_transactions(address)
+
+        protocols = detect_protocols(txs)
+
+        score = calculate_score(
+            activity,
+            protocols
+        )
+
+        risk = calculate_risk(
+            activity,
+            protocols
+        )
+
+        badge = get_badge(score)
+
+        grade = get_grade(score)
+
+        history = ScoreHistory(
+            wallet=address,
+            score=score,
+            balance=balance,
+            grade=grade,
+            protocols=",".join(protocols),
+            created_at=datetime.utcnow()
+        )
+
+        db.add(history)
+
+        db.commit()
+
+        db.refresh(history)
+
+        return {
+            "address": address,
+            "balance": balance,
+            "score": score,
+            "badge": badge,
+            "grade": grade,
+            "risk": risk,
+            "protocol_count": len(protocols),
+            "protocols": protocols,
+            "activity": activity,
+            "timeline": build_timeline(address)
+        }
+
+    except Exception as e:
+
+        raise HTTPException(
+            status_code=400,
+            detail=str(e)
+        )
+
+# ====================================
+# HISTORY
+# ====================================
+
+@router.get("/{wallet}/history")
+def get_history(
+    wallet: str,
+    db: Session = Depends(get_db)
+):
+
+    rows = (
+
+        db.query(
+            ScoreHistory
+        )
+
+        .filter(
+            ScoreHistory.wallet == wallet
+        )
+
+        .order_by(
+            ScoreHistory.created_at
+        )
+
+        .all()
+
+    )
+
+    return rows
 
 # ====================================
 # WALLET BALANCE
@@ -212,94 +639,3 @@ def wallet_protocols(address: str):
 def wallet_timeline(address: str):
 
     return build_timeline(address)
-
-# ====================================
-# WALLET SUMMARY
-# ====================================
-
-@router.get("/{address}/summary")
-def wallet_summary(
-    address: str,
-    db: Session = Depends(get_db)
-):
-
-    try:
-
-        balance = get_balance(address)
-
-        activity = get_counters(address)
-
-        txs = get_transactions(address)
-
-        protocols = detect_protocols(txs)
-
-        score = calculate_score(
-            activity,
-            protocols
-        )
-
-        risk = calculate_risk(
-            activity,
-            protocols
-        )
-
-        badge = get_badge(score)
-
-        grade = get_grade(score)
-
-        history = ScoreHistory(
-            wallet=address,
-            score=score,
-            balance=balance,
-            grade=grade,
-            created_at=datetime.utcnow()
-        )
-
-        db.add(history)
-        db.commit()
-
-        return {
-            "address": address,
-            "balance": balance,
-            "score": score,
-            "badge": badge,
-            "grade": grade,
-            "risk": risk,
-            "protocol_count": len(protocols),
-            "protocols": protocols,
-            "activity": activity,
-            "timeline": build_timeline(address)
-        }
-
-    except Exception as e:
-
-        raise HTTPException(
-            status_code=400,
-            detail=str(e)
-        )
-    
-@router.get("/{wallet}/history")
-def get_history(
-    wallet: str,
-    db: Session = Depends(get_db)
-):
-
-    rows = (
-
-        db.query(
-            ScoreHistory
-        )
-
-        .filter(
-            ScoreHistory.wallet == wallet
-        )
-
-        .order_by(
-            ScoreHistory.created_at
-        )
-
-        .all()
-
-    )
-
-    return rows
