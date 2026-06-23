@@ -34,6 +34,9 @@ from backend.services.wallet_intelligence import (
 from backend.services.grade import (
     get_grade
 )
+from backend.services.scoring_engine import (
+    score_breakdown
+)
 from backend.services.watchlist import (
     load_watchlist,
     add_wallet,
@@ -122,7 +125,129 @@ def top_protocols():
         "XyloVault",
         "XyloStablePool"
     ]
-    
+
+# ====================================
+# WALLET SUMMARY
+# ====================================
+
+@router.get("/{address}/summary")
+def wallet_summary(
+    address: str,
+    db: Session = Depends(get_db)
+):
+
+    try:
+
+        balance = get_balance(address)
+
+        activity = get_counters(address)
+
+        txs = get_transactions(address)
+
+        protocols = detect_protocols(txs)
+
+        score = calculate_score(
+            activity,
+            protocols
+        )
+
+        risk = calculate_risk(
+            activity,
+            protocols
+        )
+
+        badge = get_badge(score)
+
+        grade = get_grade(score)
+
+        insights = build_wallet_insights(
+            activity,
+            protocols,
+            score,
+            txs
+        )
+
+        history = ScoreHistory(
+            wallet=address,
+            score=score,
+            balance=balance,
+            grade=grade,
+            protocols=",".join(protocols),
+            created_at=datetime.utcnow()
+        )
+
+        db.add(history)
+
+        db.commit()
+
+        db.refresh(history)
+
+        return {
+            "address": address,
+            "balance": balance,
+            "score": score,
+            "badge": badge,
+            "grade": grade,
+            "risk": risk,
+            "protocol_count": len(protocols),
+            "protocols": protocols,
+            "activity": activity,
+            "strengths": insights["strengths"],
+            "weaknesses": insights["weaknesses"],
+            "recommendations": insights["recommendations"],
+            "timeline": build_timeline(address)
+        }
+
+    except Exception as e:
+
+        raise HTTPException(
+            status_code=400,
+            detail=str(e)
+        )
+
+# ====================================
+# SCORE BREAKDOWN
+# ====================================
+
+@router.get(
+    "/{address}/score-breakdown"
+)
+def score_breakdown_api(
+    address: str
+):
+
+    try:
+
+        balance = get_balance(
+            address
+        )
+
+        activity = get_counters(
+            address
+        )
+
+        txs = get_transactions(
+            address
+        )
+
+        protocols = detect_protocols(
+            txs
+        )
+
+        return score_breakdown(
+            balance,
+            activity,
+            protocols
+        )
+
+    except Exception as e:
+
+        raise HTTPException(
+            status_code=400,
+            detail=str(e)
+        )
+
+
 # ===================================
 # ANALYTICS
 # ===================================
@@ -505,86 +630,7 @@ def top_wallets(
     )
 
     return rows
-
-# ====================================
-# WALLET SUMMARY
-# ====================================
-
-@router.get("/{address}/summary")
-def wallet_summary(
-    address: str,
-    db: Session = Depends(get_db)
-):
-
-    try:
-
-        balance = get_balance(address)
-
-        activity = get_counters(address)
-
-        txs = get_transactions(address)
-
-        protocols = detect_protocols(txs)
-
-        score = calculate_score(
-            activity,
-            protocols
-        )
-
-        risk = calculate_risk(
-            activity,
-            protocols
-        )
-
-        badge = get_badge(score)
-
-        grade = get_grade(score)
-
-        insights = build_wallet_insights(
-            activity,
-            protocols,
-            score,
-            txs
-        )
-
-        history = ScoreHistory(
-            wallet=address,
-            score=score,
-            balance=balance,
-            grade=grade,
-            protocols=",".join(protocols),
-            created_at=datetime.utcnow()
-        )
-
-        db.add(history)
-
-        db.commit()
-
-        db.refresh(history)
-
-        return {
-            "address": address,
-            "balance": balance,
-            "score": score,
-            "badge": badge,
-            "grade": grade,
-            "risk": risk,
-            "protocol_count": len(protocols),
-            "protocols": protocols,
-            "activity": activity,
-            "strengths": insights["strengths"],
-            "weaknesses": insights["weaknesses"],
-            "recommendations": insights["recommendations"],
-            "timeline": build_timeline(address)
-        }
-
-    except Exception as e:
-
-        raise HTTPException(
-            status_code=400,
-            detail=str(e)
-        )
-
+    
 # ====================================
 # HISTORY
 # ====================================
