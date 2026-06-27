@@ -161,3 +161,50 @@ if wallet:
         st.error(
             "🔴 High Risk Wallet"
         )
+
+    st.divider()
+
+    coach = requests.get(
+        f"{API_URL}/wallets/{wallet}/coach"
+    ).json()
+
+
+    st.subheader("🤖 AI Wallet Coach")
+
+    st.markdown("### ✅ Strengths")
+
+    if coach["strengths"]:
+
+        for item in coach["strengths"]:
+
+            st.success(item)
+
+    else:
+
+        st.info("No strengths detected yet.")
+
+
+    st.markdown("### ⚠ Weaknesses")
+
+    if coach["weaknesses"]:
+
+        for item in coach["weaknesses"]:
+
+            st.warning(item)
+
+    else:
+
+        st.success("No weaknesses.")
+
+
+    st.markdown("### 🚀 Recommendations")
+
+    for item in coach["recommendations"]:
+
+        st.info(item)
+
+
+    st.metric(
+        "Estimated Future Score",
+        coach["estimated_score"]
+    )

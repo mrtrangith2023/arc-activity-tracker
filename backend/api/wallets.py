@@ -53,6 +53,10 @@ from backend.models.score_history import ScoreHistory
 from backend.services.protocol_analytics import (
     get_protocol_ranking
 )
+from backend.services.ai_wallet_coach import wallet_coach
+from backend.services.wallet_summary_service import (
+    build_wallet_summary
+)
 
 router = APIRouter()
 
@@ -138,41 +142,19 @@ def wallet_summary(
 
     try:
 
-        balance = get_balance(address)
-
-        activity = get_counters(address)
-
-        txs = get_transactions(address)
-
-        protocols = detect_protocols(txs)
-
-        score = calculate_score(
-            activity,
-            protocols
-        )
-
-        risk = calculate_risk(
-            activity,
-            protocols
-        )
-
-        badge = get_badge(score)
-
-        grade = get_grade(score)
-
-        insights = build_wallet_insights(
-            activity,
-            protocols,
-            score,
-            txs
-        )
+        summary = build_wallet_summary(address)
 
         history = ScoreHistory(
-            wallet=address,
-            score=score,
-            balance=balance,
-            grade=grade,
-            protocols=",".join(protocols),
+            wallet=summary["address"],
+
+            score=summary["score"],
+
+            balance=summary["balance"],
+
+            grade=summary["grade"],
+
+            protocols=",".join(summary["protocols"]),
+
             created_at=datetime.utcnow()
         )
 
@@ -182,21 +164,7 @@ def wallet_summary(
 
         db.refresh(history)
 
-        return {
-            "address": address,
-            "balance": balance,
-            "score": score,
-            "badge": badge,
-            "grade": grade,
-            "risk": risk,
-            "protocol_count": len(protocols),
-            "protocols": protocols,
-            "activity": activity,
-            "strengths": insights["strengths"],
-            "weaknesses": insights["weaknesses"],
-            "recommendations": insights["recommendations"],
-            "timeline": build_timeline(address)
-        }
+        return summary
 
     except Exception as e:
 
@@ -244,6 +212,29 @@ def score_breakdown_api(
 
         raise HTTPException(
             status_code=400,
+            detail=str(e)
+        )
+
+# ===================================
+# COACH_AI
+# ===================================
+@router.get("/{address}/coach")
+def wallet_ai_coach(address: str):
+
+    try:
+
+        summary = build_wallet_summary(address)
+
+        return wallet_coach(summary)
+
+    except Exception as e:
+
+        import traceback
+
+        traceback.print_exc()
+
+        raise HTTPException(
+            status_code=500,
             detail=str(e)
         )
 
