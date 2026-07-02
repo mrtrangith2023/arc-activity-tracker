@@ -57,6 +57,7 @@ from backend.services.ai_wallet_coach import wallet_coach
 from backend.services.wallet_summary_service import (
     build_wallet_summary
 )
+from backend.services.grade_progress import get_grade_progress
 
 router = APIRouter()
 
@@ -216,8 +217,22 @@ def score_breakdown_api(
         )
 
 # ===================================
+#  GRADE PROGRESS
+# ===================================
+
+@router.get("/{address}/grade-progress")
+def wallet_grade_progress(address: str):
+
+    summary = build_wallet_summary(address)
+
+    return get_grade_progress(
+        summary["score"]
+    )
+
+# ===================================
 # COACH_AI
 # ===================================
+
 @router.get("/{address}/coach")
 def wallet_ai_coach(address: str):
 

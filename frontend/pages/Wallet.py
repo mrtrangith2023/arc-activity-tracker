@@ -122,6 +122,53 @@ if wallet:
 
     st.divider()
 
+    progress = requests.get(
+        f"{API_URL}/wallets/{wallet}/grade-progress"
+    ).json()
+
+    st.subheader(
+        "🎯 Progress to Next Grade"
+    )
+
+    col1,col2,col3 = st.columns(3)
+
+    with col1:
+
+        st.metric(
+            "Current Grade",
+            progress["current_grade"]
+        )
+
+    with col2:
+
+        st.metric(
+            "Next Grade",
+            progress["next_grade"]
+        )
+
+    with col3:
+
+        st.metric(
+            "Need",
+            f'{progress["need"]} pts'
+        )
+
+    st.progress(
+        progress["progress"]/100
+    )
+
+    st.write(
+
+        f'{progress["current_score"]} / {progress["target_score"]}'
+
+    )
+
+    st.caption(
+
+        f'{progress["progress"]}% completed'
+
+    )
+
     st.subheader(
         "🌐 Protocols"
     )
